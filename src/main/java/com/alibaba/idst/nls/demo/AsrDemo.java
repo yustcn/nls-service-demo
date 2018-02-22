@@ -1,7 +1,8 @@
 package com.alibaba.idst.nls.demo;
 
-import java.io.InputStream;
+import java.io.*;
 
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.idst.nls.NlsClient;
 import com.alibaba.idst.nls.NlsFuture;
 import com.alibaba.idst.nls.event.NlsEvent;
@@ -9,11 +10,25 @@ import com.alibaba.idst.nls.event.NlsListener;
 import com.alibaba.idst.nls.protocol.NlsRequest;
 import com.alibaba.idst.nls.protocol.NlsResponse;
 
-
 public class AsrDemo implements NlsListener {
 	private static NlsClient client = new NlsClient();
-	private String akId;
-	private String akSecret;
+	private static String akId = "LTAIty94C5TYbKW9";
+	private static String akSecret = "KGPr0z0ACr4cL6SiYazvH6et4ROEM3";
+	private static String begin_path="/home/buddy/ASR/ASR_tool/0825data/";
+
+
+	private static String type_path="5m_zhegnchang_shibie";
+//	private static String type_path="5m_anjing_shibie";
+	//private static String type_path="3m_zhengchang_shibie";
+	//private static String type_path="2m_zhngchang_shibie/";
+	//private static String type_path="2m_anjing_shibie/";
+	//private static String type_path="2m_dazao_shibie/";`
+
+
+	private static String result_destination="/home/buddy/ASR/ASR_tool/asr_tool/speech_test/ali_"+type_path+".txt";
+	private static String filename_temp="";
+
+
 
 	public AsrDemo(String akId, String akSecret) {
 		System.out.println("init Nls client...");
@@ -30,12 +45,15 @@ public class AsrDemo implements NlsListener {
 		System.out.println("demo done");
 	}
 
-	public void startAsr() {
+	public void startAsr(String full_file_name) {
 		//开始发送语音
 		System.out.println("open audio file...");
         InputStream fis = null;
+        if(!full_file_name.endsWith(".pcm")){
+        	return;
+		}
         try {
-            fis = this.getClass().getClassLoader().getResourceAsStream("sample.pcm");
+            fis = new FileInputStream(new File(full_file_name));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -84,6 +102,27 @@ public class AsrDemo implements NlsListener {
 		}
 		if (result != null) {
 			System.out.println(result);
+			if (response.getAsr_ret()!=null&&!"".equals(response.getAsr_ret())){
+
+				JSONObject json = (JSONObject)JSONObject.parse(response.getAsr_ret());
+				String result_text = (String)json.get("result");
+
+				System.out.println("========================="+result_text);
+				PrintWriter pw=null;
+				try {
+					 pw=new PrintWriter(new FileOutputStream(new File(result_destination),true),true);
+
+					pw.println(filename_temp+" "+result_text);
+
+				} catch (FileNotFoundException e1) {
+					e1.printStackTrace();
+				}finally {
+					if (pw !=null) {
+						pw.close();
+					}
+				}
+
+			}
 		} else {
 			System.out.println(response.jsonResults.toString());
 		}
@@ -104,10 +143,35 @@ public class AsrDemo implements NlsListener {
 	}
 
 	public static void main(String[] args) {
-		String akId = "LTAIty94C5TYbKW9";
-		String akSecret = "KGPr0z0ACr4cL6SiYazvH6et4ROEM3";
+
 		AsrDemo asrDemo = new AsrDemo(akId, akSecret);
-		asrDemo.startAsr();
+
+
+		File file_path=new File(begin_path+type_path+"/");
+
+
+
+
+
+		for (int i = 0; i < file_path.list().length; i++) {
+
+			String file_name=file_path.list()[i];
+			System.out.println(file_name);
+			filename_temp=file_name;
+
+			asrDemo.startAsr(file_path+"/"+file_name);
+		}
+
+
+
+
 		asrDemo.shutDown();
+
+
+
+
+
+
+
 	}
 }
